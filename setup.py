@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='flask_sqlalchemy_magic_query',
-    version='0.1.1',
+    version='0.1.2',
     description='Converts HTTP URL query string parameters to flask_sqlalchemy query results',
     long_description=long_description,
     long_description_content_type="text/markdown",
