@@ -49,8 +49,6 @@ class Query(Query):
 
                 operations.append(operation)
 
-        if len(operations) == 1:
-            return operations[0]
         return operations
 
 
@@ -70,7 +68,7 @@ def build_magic_filter_operation(
     if operator == 'like':
         return column.like(value)
     if operator == 'in':
-        return column.in_(value)
+        return column.in_(value.split(','))
 
     return column == value
 
