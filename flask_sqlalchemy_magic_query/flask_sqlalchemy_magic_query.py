@@ -51,7 +51,7 @@ class Query(Query):
 
         if len(operations) == 1:
             return operations[0]
-        return and_(tuple(operations))
+        return operations
 
 
 def build_magic_filter_operation(
@@ -90,9 +90,13 @@ def filter_query(
             if filtered_args == {}:
                 query_result = model.query.paginate(page=page, per_page=per_page, count=True)
             else:
-                query_result = model.query.filter(
-                    query.magic_filter(filters=filtered_args, raise_errors=False)).paginate(
-                    page=page, per_page=per_page, count=True)
+                filters = query.magic_filter(filters=filtered_args)
+
+                query_result = None
+
+                for filter in filters:
+                    query_result = model.query.filter(filter).paginate(
+                        page=page, per_page=per_page, count=True)
 
             return func(data=query_result.items, total=query_result.total, *args, **kwargs)
 
