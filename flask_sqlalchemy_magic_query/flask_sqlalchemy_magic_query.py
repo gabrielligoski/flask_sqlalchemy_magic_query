@@ -1,9 +1,9 @@
-from functools import wraps
+from functools import wraps, reduce
 from flask import request
 from flask_sqlalchemy.model import Model
 from sqlalchemy.orm import ColumnProperty, InstrumentedAttribute, RelationshipProperty, Query
 
-from sqlalchemy.sql.elements import and_
+from sqlalchemy.sql.elements import BinaryExpression, UnaryExpression
 
 
 def parse_magic_filter_key(
@@ -35,7 +35,8 @@ class Query(Query):
         return self._raw_columns[0].entity_namespace
 
     def magic_filter(self, filters, raise_errors: bool = True):
-        operations = []
+        filters_operations = []
+        sorts_operations = []
         og_model = self._get_base_model()
         for key, value in filters.items():
             if parsed := parse_magic_filter_key(
@@ -47,9 +48,12 @@ class Query(Query):
                     model, attribute_name, value, key.split("__")[1]
                 )
 
-                operations.append(operation)
+                if key.split("__")[1] == 'sort':
+                    sorts_operations.append(operation)
+                else:
+                    filters_operations.append(operation)
 
-        return operations
+        return filters_operations, sorts_operations
 
 
 def build_magic_filter_operation(
@@ -69,8 +73,15 @@ def build_magic_filter_operation(
         return column.like(value)
     if operator == 'in':
         return column.in_(value.split(','))
+    if operator == 'sort' and value == 'desc':
+        return column.desc()
+    if operator == 'sort' and value == 'asc':
+        return column.asc()
+    if operator == 'eq':
+        return column == value
 
-    return column == value
+    raise AttributeError(f"Invalid filtering operator: {operator}")
+    return None
 
 
 def filter_query(
@@ -85,16 +96,17 @@ def filter_query(
             per_page = request.args.get('per_page', default=1000, type=int)
             filtered_args = {i: request.args[i] for i in request.args if i != 'page' or i != 'per_page'}
 
+            query_result = None
+
             if filtered_args == {}:
                 query_result = model.query.paginate(page=page, per_page=per_page, count=True)
             else:
-                filters = query.magic_filter(filters=filtered_args)
+                filters, sorts = query.magic_filter(filters=filtered_args)
 
-                query_result = None
-
-                for filter in filters:
-                    query_result = model.query.filter(filter).paginate(
-                        page=page, per_page=per_page, count=True)
+                filtered_query = reduce(lambda x, y: x.filter(y) if type(y) is BinaryExpression else x, filters,
+                                        model.query)
+                query_result = reduce(lambda x, y: x.order_by(y) if type(y) is UnaryExpression else x, sorts,
+                                      filtered_query).paginate(page=page, per_page=per_page, count=True)
 
             return func(data=query_result.items, total=query_result.total, *args, **kwargs)
 
