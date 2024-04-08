@@ -108,7 +108,7 @@ def filter_query(
                 query_result = reduce(lambda x, y: x.order_by(y) if type(y) is UnaryExpression else x, sorts,
                                       filtered_query).paginate(page=page, per_page=per_page, count=True)
 
-            return func(data=query_result.items, total=query_result.total, *args, **kwargs)
+            return func(data=query_result.items, total=query_result.total, page=page, per_page=per_page, *args, **kwargs)
 
         return decorated
 
