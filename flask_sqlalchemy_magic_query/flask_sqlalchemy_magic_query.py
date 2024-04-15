@@ -94,7 +94,7 @@ def filter_query(
 
             page = request.args.get('page', default=1, type=int)
             per_page = request.args.get('per_page', default=1000, type=int)
-            filtered_args = {i: request.args[i] for i in request.args if i != 'page' or i != 'per_page'}
+            filtered_args = {i: request.args[i] for i in request.args if i not in ['page', 'per_page']}
 
             query_result = None
 
