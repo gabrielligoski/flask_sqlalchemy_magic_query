@@ -85,8 +85,12 @@ def build_magic_filter_operation(
 
 
 def filter_query(
-        model
+        model,
+        ignore=None
 ):
+    if ignore is None:
+        ignore = []
+
     def wrapper(func):
         @wraps(func)
         def decorated(*args, **kwargs):
@@ -94,7 +98,7 @@ def filter_query(
 
             page = request.args.get('page', default=1, type=int)
             per_page = request.args.get('per_page', default=1000, type=int)
-            filtered_args = {i: request.args[i] for i in request.args if i not in ['page', 'per_page']}
+            filtered_args = {i: request.args[i] for i in request.args if i not in ['page', 'per_page'] + ignore}
 
             query_result = None
 
@@ -108,7 +112,8 @@ def filter_query(
                 query_result = reduce(lambda x, y: x.order_by(y) if type(y) is UnaryExpression else x, sorts,
                                       filtered_query).paginate(page=page, per_page=per_page, count=True)
 
-            return func(data=query_result.items, total=query_result.total, page=page, per_page=per_page, *args, **kwargs)
+            return func(data=query_result.items, total=query_result.total, page=page, per_page=per_page, *args,
+                        **kwargs)
 
         return decorated
 
